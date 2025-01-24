@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ollama Chat Interface</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --bg-color: #f8fafc;
+            --chat-bg: #ffffff;
+            --text-color: #000000;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            color: var(--text-color);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+            background: #105f8377;
+            padding: 20px;
+            border-radius: 16px;
+            color: white;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2rem;
+        }
+
+        #chat-container {
+            background: var(--chat-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            padding: 20px;
+        }
+
+        #model-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 1rem;
+        }
+
+        #model-select {
+            width: 200px;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+        }
+
+        #messages {
+            height: 500px;
+            overflow-y: auto;
+            padding: 1rem;
+            background: #f8fafc;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .message {
+            margin: 0.75rem 0;
+            padding: 1rem;
+            border-radius: 8px;
+            max-width: 85%;
+        }
+
+        .user {
+            background-color: #e0e7ff;
+            margin-left: auto;
+        }
+
+        .bot {
+            background-color: #f1f5f9;
+        }
+
+        .system {
+            background-color: #fee2e2;
+            color: #991b1b;
+            font-size: 0.875rem;
+        }
+
+        #input-container {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        #user-input {
+            flex-grow: 1;
+            padding: 0.75rem;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        /* Add these CSS rules */
+.message {
+    margin: 0.75rem 0;
+    padding: 1rem;
+    border-radius: 8px;
+    max-width: 85%;
+    line-height: 1.6;
+}
+
+.message h1 {
+    font-size: 1.8em;
+    margin: 1.5em 0 0.8em 0;
+    color: #1a1a1a;
+    font-weight: 600;
+}
+
+.message h2 {
+    font-size: 1.5em;
+    margin: 1.3em 0 0.7em 0;
+    color: #2d2d2d;
+    font-weight: 600;
+}
+
+.message h3 {
+    font-size: 1.3em;
+    margin: 1.2em 0 0.6em 0;
+    color: #333333;
+    font-weight: 600;
+}
+
+.message p {
+    margin: 1em 0;
+}
+
+.message ul, .message ol {
+    margin: 1em 0;
+    padding-left: 2em;
+}
+
+.message ul li {
+    list-style-type: disc;
+    margin: 0.5em 0;
+    padding-left: 0.5em;
+}
+
+.message ul ul li {
+    list-style-type: circle;
+}
+
+.message ul ul ul li {
+    list-style-type: square;
+}
+
+.message ol li {
+    list-style-type: decimal;
+    margin: 0.5em 0;
+    padding-left: 0.5em;
+}
+
+.message strong {
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
+.message em {
+    font-style: italic;
+}
+
+.message code {
+    background-color: #f5f5f5;
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-family: monospace;
+}
+
+.message pre {
+    background-color: #f5f5f5;
+    padding: 1em;
+    border-radius: 5px;
+    overflow-x: auto;
+    margin: 1em 0;
+}
+
+/* Update the formatResponse function */
+function formatResponse(text) {
+    // Set marked options
+    marked.setOptions({
+        gfm: true,
+        breaks: true,
+        smartLists: true,
+        headerIds: true,
+        mangle: false,
+        sanitize: false,
+        smartypants: true,
+        xhtml: true
+    });
+
+    // Pre-process special content
+    text = text.replace(/```mermaid([\s\S]*?)```/g, '<div class="mermaid">$1</div>');
+    text = text.replace(/```svg([\s\S]*?)```/g, '$1');
+
+    // Process markdown
+    const htmlContent = marked.parse(text);
+
+    // Post-process for additional formatting
+    const processedContent = htmlContent
+        .replace(/<h([1-6])>/g, '<h$1 style="margin-top: 1.5em; margin-bottom: 0.8em;">')
+        .replace(/<ul>/g, '<ul style="list-style-type: disc; margin-left: 2em;">');
+
+    return processedContent;
+}
+
+        button:hover {
+            background-color: #4f46e5;
+        }
+
+        .spinner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 150px;
+    height: 150px;
+    margin: 0;
+    background: url('spinner.gif') no-repeat center center;
+    background-size: contain;
+    z-index: 1000;
+}
+
+#chat-container {
+    position: relative;
+}
+
+        .message table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+        }
+
+        .message th, .message td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        .message th {
+            background-color: #f8f9fa;
+        }
+
+        .mermaid {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Ollama Chat Interface</h1>
+        </div>
+        <div id="chat-container">
+            <div id="model-controls">
+                <select id="model-select">
+                    <option value="">Select a model...</option>
+                    <option value="pull">Pull New Model</option>
+                </select>
+            </div>
+            <div id="loading" class="spinner" style="display: none;"></div>
+            <div id="messages"></div>
+            <div id="input-container">
+                <input type="text" id="user-input" placeholder="Type your message...">
+                <button onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentModel = null;
+        mermaid.initialize({ startOnLoad: true });
+
+        function formatResponse(text) {
+            // Convert markdown tables
+            text = text.replace(/^\|(.+)\|$/gm, function(match) {
+                return `<div class="table-wrapper"><table><tr><td>${match
+                    .split('|')
+                    .filter(cell => cell.trim())
+                    .join('</td><td>')}</td></tr></table></div>`;
+            });
+
+            // Convert mermaid diagrams
+            text = text.replace(/```mermaid([\s\S]*?)```/g, 
+                '<div class="mermaid">$1</div>');
+
+            // Convert SVG
+            text = text.replace(/```svg([\s\S]*?)```/g, '$1');
+
+            return marked.parse(text, {
+                gfm: true,
+                breaks: true,
+                smartLists: true
+            });
+        }
+
+        async function loadModels() {
+    const spinner = document.getElementById('loading');
+    // Don't show spinner for initial model load
+    try {
+        const response = await fetch('/list-models');
+        const models = await response.json();
+        const select = document.getElementById('model-select');
+        select.innerHTML = '<option value="">Select a model...</option><option value="pull">Pull New Model</option>';
+        models.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model.name;
+            option.textContent = model.name;
+            select.appendChild(option);
+        });
+        displayMessage('system', 'Models loaded. Please select a model to begin.');
+    } catch (error) {
+        displayMessage('system', 'Error loading models: ' + error.message);
+    }
+}
+
+        document.getElementById('model-select').addEventListener('change', async function(e) {
+            const modelName = e.target.value;
+            if (!modelName) return;
+
+            if (modelName === 'pull') {
+                const newModel = prompt('Enter the model name to pull (e.g., llama2:latest):');
+                if (newModel) {
+                    try {
+                        displayMessage('system', `Pulling model ${newModel}... This may take a while.`);
+                        const response = await fetch('/pull-model', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ model: newModel })
+                        });
+                        const result = await response.json();
+                        if (response.ok) {
+                            displayMessage('system', `Model ${newModel} pulled successfully!`);
+                            loadModels();
+                        } else {
+                            throw new Error(result.error);
+                        }
+                    } catch (error) {
+                        displayMessage('system', 'Error pulling model: ' + error.message);
+                    }
+                }
+                return;
+            }
+
+            try {
+                const response = await fetch('/load-model', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model: modelName })
+                });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    currentModel = modelName;
+                    displayMessage('system', `Model ${modelName} loaded successfully`);
+                } else {
+                    throw new Error(result.error || 'Failed to load model');
+                }
+            } catch (error) {
+                displayMessage('system', 'Error: ' + error.message);
+            }
+        });
+
+        async function sendMessage() {
+            if (!currentModel) {
+                displayMessage('system', 'Please select a model first');
+                return;
+            }
+
+            const input = document.getElementById('user-input');
+            const message = input.value.trim();
+            if (!message) return;
+
+            displayMessage('user', message);
+            input.value = '';
+
+            const spinner = document.getElementById('loading');
+            spinner.style.display = 'block';
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: currentModel,
+                        prompt: message
+                    })
+                });
+                
+                const data = await response.json();
+                if (response.ok && data.response) {
+                    displayMessage('bot', data.response, true);
+                    mermaid.init(undefined, document.querySelectorAll('.mermaid'));
+                } else {
+                    throw new Error(data.error || 'Failed to get response');
+                }
+            } catch (error) {
+                displayMessage('system', 'Error: ' + error.message);
+            } finally {
+                spinner.style.display = 'none';
+            }
+        }
+
+        function displayMessage(role, content, format = false) {
+            const messages = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            messageDiv.innerHTML = format ? formatResponse(content) : content;
+            messages.appendChild(messageDiv);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        document.getElementById('user-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Load models when page loads
+        loadModels();
+    </script>
+</body>
+</html>

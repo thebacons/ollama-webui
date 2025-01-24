@@ -1,0 +1,10 @@
+[
+  {
+    "role": "user",
+    "content": "who are you?"
+  },
+  {
+    "role": "bot",
+    "content": "<h3>Response</h3>\n<ul>\n<li><strong>type:</strong> completion</li>\n<li><strong>message:</strong> I&#39;m Phi, a language model developed by Microsoft. I’m designed to assist with providing information and answering questions across a wide range of topics. Whether you need help with understanding complex concepts or simply want some general advice, feel free to ask!</li>\n</ul>\n"
+  }
+]

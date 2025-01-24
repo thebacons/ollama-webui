@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chatbot</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f8f9fa;
+    }
+    #chat-container {
+      max-width: 700px;
+      margin: 50px auto;
+      padding: 20px;
+      background-color: #ffffff;
+      border: 1px solid #ddd;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+    }
+    #messages {
+      height: 400px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+      background-color: #f9f9f9;
+    }
+    .message {
+      margin: 10px 0;
+      padding: 10px 15px;
+      border-radius: 8px;
+      word-wrap: break-word;
+    }
+    .user {
+      background-color: #d4edda;
+      align-self: flex-end;
+      font-family: 'Segoe UI', Arial, sans-serif;
+    }
+    .bot {
+      background-color: #d1ecf1;
+      font-family: 'Segoe UI', Arial, sans-serif;
+    }
+    #input-container {
+      display: flex;
+    }
+    #input-container input {
+      flex: 1;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ddd;
+      border-radius: 4px 0 0 4px;
+      outline: none;
+    }
+    #input-container button {
+      padding: 10px 20px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 0 4px 4px 0;
+      cursor: pointer;
+    }
+    #input-container button:hover {
+      background-color: #0056b3;
+    }
+    .markdown {
+      font-size: 15px;
+      color: #333;
+      line-height: 1.6;
+    }
+    pre {
+      background-color: #f8f9fa;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <div id="chat-container">
+    <div id="messages"></div>
+    <div id="input-container">
+      <input type="text" id="user-input" placeholder="Type your message...">
+      <button onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <script>
+    async function sendMessage() {
+      const input = document.getElementById('user-input');
+      const messages = document.getElementById('messages');
+
+      if (input.value.trim() === '') return;
+
+      // Display the user's message
+      const userMessage = document.createElement('div');
+      userMessage.textContent = input.value;
+      userMessage.className = 'message user';
+      messages.appendChild(userMessage);
+      messages.scrollTop = messages.scrollHeight;
+
+      // Send the message to the server
+      try {
+        const response = await fetch('/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ prompt: input.value }),
+        });
+
+        const data = await response.json();
+
+        const botMessage = document.createElement('div');
+        botMessage.className = 'message bot markdown';
+
+        // Render the response (formatted nicely)
+        botMessage.innerHTML = data.response;
+        messages.appendChild(botMessage);
+        messages.scrollTop = messages.scrollHeight;
+      } catch (error) {
+        console.error('Error:', error);
+        const errorMessage = document.createElement('div');
+        errorMessage.textContent = 'Error: Could not get response.';
+        errorMessage.className = 'message bot';
+        messages.appendChild(errorMessage);
+        messages.scrollTop = messages.scrollHeight;
+      }
+
+      // Clear the input
+      input.value = '';
+    }
+  </script>
+</body>
+</html>

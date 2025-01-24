@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chatbot with Save and Themes</title>
+  <style>
+    /* Light Theme */
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: var(--background-color, #f8f9fa);
+      color: var(--text-color, #000);
+      transition: all 0.3s;
+    }
+    #chat-container {
+      max-width: 700px;
+      margin: 50px auto;
+      padding: 20px;
+      background-color: var(--container-color, #ffffff);
+      border: 1px solid #ddd;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+    }
+    #messages {
+      height: 400px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+      background-color: var(--messages-background-color, #f9f9f9);
+    }
+    .message {
+      margin: 10px 0;
+      padding: 10px 15px;
+      border-radius: 8px;
+      word-wrap: break-word;
+    }
+    .user {
+      background-color: var(--user-color, #d4edda);
+      align-self: flex-end;
+    }
+    .bot {
+      background-color: var(--bot-color, #d1ecf1);
+    }
+    #input-container {
+      display: flex;
+      margin-bottom: 10px;
+    }
+    #input-container input {
+      flex: 1;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ddd;
+      border-radius: 4px 0 0 4px;
+      outline: none;
+    }
+    #input-container button {
+      padding: 10px 20px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 0 4px 4px 0;
+      cursor: pointer;
+    }
+    #input-container button:hover {
+      background-color: #0056b3;
+    }
+    .markdown {
+      font-size: 15px;
+      color: var(--text-color, #333);
+      line-height: 1.6;
+    }
+    pre {
+      background-color: #f8f9fa;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    #controls {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    #controls button,
+    #controls select {
+      padding: 10px;
+      font-size: 16px;
+      margin-right: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="chat-container">
+    <div id="controls">
+      <button onclick="toggleTheme()">Toggle Dark/Light Theme</button>
+      <div>
+        <select id="saved-chats" onchange="loadSavedChat()">
+          <option value="">Select a saved chat...</option>
+        </select>
+        <button onclick="saveChat()">Save Chat</button>
+      </div>
+    </div>
+    <div id="messages"></div>
+    <div id="input-container">
+      <input type="text" id="user-input" placeholder="Type your message...">
+      <button onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <script>
+    const messages = [];
+    const savedChatsFolder = "saved-chats/";
+
+    // Dark/Light Theme Toggle
+    function toggleTheme() {
+      const root = document.documentElement;
+      if (root.style.getPropertyValue('--background-color') === '#000') {
+        root.style.setProperty('--background-color', '#f8f9fa');
+        root.style.setProperty('--text-color', '#000');
+        root.style.setProperty('--container-color', '#ffffff');
+        root.style.setProperty('--messages-background-color', '#f9f9f9');
+        root.style.setProperty('--user-color', '#d4edda');
+        root.style.setProperty('--bot-color', '#d1ecf1');
+      } else {
+        root.style.setProperty('--background-color', '#000');
+        root.style.setProperty('--text-color', '#fff');
+        root.style.setProperty('--container-color', '#333');
+        root.style.setProperty('--messages-background-color', '#444');
+        root.style.setProperty('--user-color', '#444');
+        root.style.setProperty('--bot-color', '#555');
+      }
+    }
+
+    // Send Message
+    async function sendMessage() {
+      const input = document.getElementById('user-input');
+      const messagesContainer = document.getElementById('messages');
+
+      if (input.value.trim() === '') return;
+
+      // Display the user's message
+      const userMessage = document.createElement('div');
+      userMessage.textContent = input.value;
+      userMessage.className = 'message user';
+      messagesContainer.appendChild(userMessage);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+      // Save message locally
+      messages.push({ role: 'user', content: input.value });
+
+      // Send message to server
+      try {
+        const response = await fetch('/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ prompt: input.value }),
+        });
+
+        const data = await response.json();
+
+        const botMessage = document.createElement('div');
+        botMessage.className = 'message bot markdown';
+        botMessage.innerHTML = data.response;
+        messagesContainer.appendChild(botMessage);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        // Save bot's response locally
+        messages.push({ role: 'bot', content: data.response });
+      } catch (error) {
+        console.error('Error:', error);
+        const errorMessage = document.createElement('div');
+        errorMessage.textContent = 'Error: Could not get response.';
+        errorMessage.className = 'message bot';
+        messagesContainer.appendChild(errorMessage);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
+
+      // Clear input
+      input.value = '';
+    }
+
+    // Save Chat
+    function saveChat() {
+      const fileName = `chat_${Date.now()}`;
+      const fileContent = JSON.stringify(messages, null, 2);
+      downloadFile(`${savedChatsFolder}${fileName}.json`, fileContent);
+      addToSavedChats(fileName);
+    }
+
+    // Load Saved Chat
+    function loadSavedChat() {
+      const savedChatsDropdown = document.getElementById('saved-chats');
+      const selectedChat = savedChatsDropdown.value;
+
+      if (selectedChat) {
+        fetch(`${savedChatsFolder}${selectedChat}.json`)
+          .then((response) => response.json())
+          .then((chat) => {
+            const messagesContainer = document.getElementById('messages');
+            messagesContainer.innerHTML = ''; // Clear existing messages
+            chat.forEach(({ role, content }) => {
+              const message = document.createElement('div');
+              message.className = `message ${role}`;
+              message.innerHTML = content;
+              messagesContainer.appendChild(message);
+            });
+          });
+      }
+    }
+
+    // Utility: Download file
+    function downloadFile(fileName, content) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([content], { type: 'application/json' }));
+      a.download = fileName;
+      a.click();
+    }
+
+    // Utility: Add to Saved Chats Dropdown
+    function addToSavedChats(fileName) {
+      const savedChatsDropdown = document.getElementById('saved-chats');
+      const option = document.createElement('option');
+      option.value = fileName;
+      option.textContent = fileName;
+      savedChatsDropdown.appendChild(option);
+    }
+  </script>
+</body>
+</html>
